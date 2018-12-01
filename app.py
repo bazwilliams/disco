@@ -51,8 +51,10 @@ def on_message(client, userdata, msg):
     payload = msg.payload.decode('UTF-8')
     if not disco_mode and payload == "On":
         disco_mode = True
-        thread = Hue_Disco_Thread()
-        thread.start()
+        thread1 = MQTT_Disco_Thread()
+        thread2 = Hue_Disco_Thread()
+        thread1.start()
+        thread2.start()
     else:
         disco_mode = False
 
