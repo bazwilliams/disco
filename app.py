@@ -7,6 +7,7 @@ from rgbxy import Converter
 import time
 
 disco_mode = False
+client = mqtt.Client()
 
 try:
     b = Bridge('192.168.1.123')
@@ -14,17 +15,25 @@ try:
 
     light_names = b.get_light_objects('name')
 
-    lights = [
+    hue_lights = [
         light_names['Lounge Lamp'],
         light_names['Lounge Main'] ]
 
     converter = Converter()
 
-    colours = [
+    hue_colours = [
         converter.hex_to_xy('FF0000'),
         converter.hex_to_xy('00FF00'),
         converter.hex_to_xy('0000FF'),
         converter.hex_to_xy('FF00FF') ]
+
+    mqtt_colours = [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [1, 0, 1, 0],
+    ]
+
     print("Connected to hue bridge")
 
 except PhueRegistrationException:
@@ -42,18 +51,36 @@ def on_message(client, userdata, msg):
     payload = msg.payload.decode('UTF-8')
     if not disco_mode and payload == "On":
         disco_mode = True
-        thread = Disco_Thread()
+        thread = Hue_Disco_Thread()
         thread.start()
     else:
         disco_mode = False
 
-class Disco_Thread(Thread):
+class MQTT_Disco_Thread(Thread):
+    import paho.mqtt.subscribe as subscribe
+
     def run(self):
         global disco_mode
-        global colours
-        global lights
+        global mqtt_colours
+        global client
+
+        orignalPayload = subscribe.simple("house/livingroom/christmastree", hostname="192.168.1.126").payload
+
+        while(disco_mode):
+            for colour in mqtt_colours:
+                payload = "{ \"colours\": [ \"" + colour + "\" ],\"repeat\": true, \"animation\": \"chase\" }"
+                client.publish("house/livingroom/christmastree", payload=payload, qos=0, retain=True)
+                time.sleep(0.1)
+
+        client.publish("house/livingroom/christmastree", payload=orignalPayload, qos=0, retain=True)
+
+class Hue_Disco_Thread(Thread):
+    def run(self):
+        global disco_mode
+        global hue_colours
+        global hue_lights
         originalState = dict()
-        for light in lights:
+        for light in hue_lights:
             originalState[light] = {
                 'on': light.on,
                 'transitiontime': light.transitiontime,
@@ -61,19 +88,18 @@ class Disco_Thread(Thread):
             }
 
         while(disco_mode):
-            for colour in colours:
-                for light in lights:
+            for colour in hue_colours:
+                for light in hue_lights:
                     light.on = True
                     light.transitiontime = 1
                     light.xy = colour
                     time.sleep(0.1)
         
-        for light in lights:
+        for light in hue_lights:
             light.transitiontime = originalState[light]['transitiontime']
             light.xy = originalState[light]['xy']
             light.on = originalState[light]['on']
 
-client = mqtt.Client()
 client.connect("192.168.1.126", 1883, 60)
 client.on_connect = on_connect
 client.on_message = on_message

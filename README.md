@@ -1,6 +1,6 @@
 # Build
 
-Rename the lights as appropriate for your house. 
+Rename the hue_lights as appropriate for your house. 
 
 ```sh
 docker build -t disco .
@@ -31,7 +31,7 @@ mosquitto_pub -t house/livingroom/disco -m "Off"
 # Improve
 
 - [X] Use MQTT to turn disco mode on or off
-- [ ] Configurable lights
+- [ ] Configurable hue_lights
 - [ ] Configurable bridge or auto discovery
 - [ ] Use Spotify Web API to start music; or
 - [ ] Hook into HomeAssistant
