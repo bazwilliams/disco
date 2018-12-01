@@ -2,12 +2,12 @@
 
 from threading import Thread
 import paho.mqtt.client as mqtt
+import paho.mqtt.subscribe as subscribe
 from phue import Bridge, PhueRegistrationException
 from rgbxy import Converter
 import time
 
 disco_mode = False
-client = mqtt.Client()
 
 try:
     b = Bridge('192.168.1.123')
@@ -28,10 +28,10 @@ try:
         converter.hex_to_xy('FF00FF') ]
 
     mqtt_colours = [
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],
-        [1, 0, 1, 0],
+        "[1, 0, 0, 0]",
+        "[0, 1, 0, 0]",
+        "[0, 0, 1, 0]",
+        "[1, 0, 1, 0]",
     ]
 
     print("Connected to hue bridge")
@@ -59,20 +59,19 @@ def on_message(client, userdata, msg):
         disco_mode = False
 
 class MQTT_Disco_Thread(Thread):
-    import paho.mqtt.subscribe as subscribe
-
     def run(self):
         global disco_mode
         global mqtt_colours
         global client
 
-        orignalPayload = subscribe.simple("house/livingroom/christmastree", hostname="192.168.1.126").payload
+        orignalPayload = subscribe.simple("house/livingroom/christmastree", hostname="192.168.1.126") \
+                .payload.decode('UTF-8')
 
         while(disco_mode):
             for colour in mqtt_colours:
-                payload = "{ \"colours\": [ \"" + colour + "\" ],\"repeat\": true, \"animation\": \"chase\" }"
+                payload = "{ \"colours\": [ " + colour + " ],\"repeat\": true, \"animation\": \"chase\" }"
                 client.publish("house/livingroom/christmastree", payload=payload, qos=0, retain=True)
-                time.sleep(0.1)
+                time.sleep(0.5)
 
         client.publish("house/livingroom/christmastree", payload=orignalPayload, qos=0, retain=True)
 
@@ -102,6 +101,7 @@ class Hue_Disco_Thread(Thread):
             light.xy = originalState[light]['xy']
             light.on = originalState[light]['on']
 
+client = mqtt.Client()
 client.connect("192.168.1.126", 1883, 60)
 client.on_connect = on_connect
 client.on_message = on_message
